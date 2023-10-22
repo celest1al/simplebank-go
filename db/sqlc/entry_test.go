@@ -109,8 +109,4 @@ func TestListEntries(t *testing.T) {
 	for _, entry := range entries {
 		require.NotEmpty(t, entry)
 	}
-
-	for _, entry := range entries {
-		deleteTestEntry(t, entry.AccountID, entry.ID)
-	}
 }
