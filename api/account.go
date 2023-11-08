@@ -8,6 +8,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type Pagination struct {
+	CurrentPage int32 `json:"currentPage"`
+	PageSize    int32 `json:"pageSize"`
+}
+
 type greateAccountRequest struct {
 	Owner    string `json:"owner" binding:"required"`
 	Currency string `json:"currency" binding:"required,oneof=USD EUR"`
@@ -66,7 +71,9 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, account)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": account,
+	})
 }
 
 type listAccountRequest struct {
@@ -95,5 +102,71 @@ func (server *Server) ListAccount(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, accounts)
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   accounts,
+		"pagination": Pagination{
+			CurrentPage: req.PageID,
+			PageSize:    req.PageSize,
+		},
+	})
+}
+
+type updateAccountRequest struct {
+	ID      int64 `json:"id" binding:"required"`
+	Balance int64 `json:"balance" binding:"required"`
+}
+
+func (server *Server) UpdateAccount(ctx *gin.Context) {
+	var req updateAccountRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+
+		return
+	}
+
+	arg := db.UpdateAccountParams{
+		ID:      req.ID,
+		Balance: req.Balance,
+	}
+
+	account, err := server.store.UpdateAccount(ctx, arg)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   account,
+	})
+}
+
+type deleteAccountRequest struct {
+	ID int64 `json:"id" binding:"required"`
+}
+
+func (server *Server) DeleteAccount(ctx *gin.Context) {
+	var req deleteAccountRequest
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errorResponse(err))
+
+		return
+	}
+
+	err := server.store.DeleteAccount(ctx, req.ID)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Account has been successfully deleted.",
+	})
 }
